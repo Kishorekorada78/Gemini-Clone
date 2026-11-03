@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Gemini Clone</title>
+
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+	
+	<!-- Markdown Renderer -->
+	<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+	<!-- HTML Sanitizer -->
+	<script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+	
+	<style>
+	    .chat-response {
+	        width: 100%;
+	    }
+
+	    .user-bubble {
+	        background: #e3e8f0;
+	        border-radius: 24px;
+	        padding: 14px 20px;
+	        max-width: 75%;
+	        line-height: 1.7;
+	        overflow-wrap: anywhere;
+	    }
+
+	    .gemini-avatar {
+	        width: 36px;
+	        height: 36px;
+	        min-width: 36px;
+	        border-radius: 50%;
+	        background: linear-gradient(135deg, #4285f4, #a142f4);
+	        color: white;
+	        display: flex;
+	        align-items: center;
+	        justify-content: center;
+	        font-size: 22px;
+	    }
+
+	    .gemini-content {
+	        flex: 1;
+	        min-width: 0;
+	        line-height: 1.8;
+	        overflow-wrap: anywhere;
+	    }
+
+	    .markdown-content h1 {
+	        font-size: 1.7rem;
+	        font-weight: 600;
+	        margin: 20px 0 12px;
+	    }
+
+	    .markdown-content h2 {
+	        font-size: 1.4rem;
+	        font-weight: 600;
+	        margin: 18px 0 10px;
+	    }
+
+	    .markdown-content h3 {
+	        font-size: 1.15rem;
+	        font-weight: 600;
+	        margin: 16px 0 8px;
+	    }
+
+	    .markdown-content p {
+	        margin: 10px 0;
+	    }
+
+	    .markdown-content ul {
+	        list-style: disc;
+	        padding-left: 24px;
+	        margin: 12px 0;
+	    }
+
+	    .markdown-content ol {
+	        list-style: decimal;
+	        padding-left: 24px;
+	        margin: 12px 0;
+	    }
+
+	    .markdown-content li {
+	        margin: 6px 0;
+	    }
+
+	    .markdown-content strong {
+	        font-weight: 600;
+	        color: #202124;
+	    }
+
+	    .markdown-content pre {
+	        background: #e9eef6;
+	        border-radius: 12px;
+	        padding: 16px;
+	        overflow-x: auto;
+	        margin: 16px 0;
+	    }
+
+	    .markdown-content code {
+	        background: #e9eef6;
+	        border-radius: 5px;
+	        padding: 3px 6px;
+	        font-family: monospace;
+	        font-size: 0.9em;
+	    }
+
+	    .markdown-content pre code {
+	        background: transparent;
+	        padding: 0;
+	    }
+
+	    .markdown-content blockquote {
+	        border-left: 4px solid #9ca3af;
+	        padding-left: 16px;
+	        color: #6b7280;
+	        margin: 12px 0;
+	    }
+
+	    .markdown-content table {
+	        width: 100%;
+	        border-collapse: collapse;
+	        margin: 16px 0;
+	    }
+
+	    .markdown-content th,
+	    .markdown-content td {
+	        border: 1px solid #d1d5db;
+	        padding: 10px;
+	        text-align: left;
+	    }
+
+	    .markdown-content th {
+	        background: #e9eef6;
+	        font-weight: 600;
+	    }
+	</style>
+	
+</head>
+
+<body class="bg-[#f8f9fa] text-gray-800 h-screen overflow-hidden">
+
+<div class="flex h-screen">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-[#f0f4f9] p-5 flex flex-col">
+
+        <div class="mb-10">
+            <button class="text-2xl text-gray-600 hover:bg-gray-200 rounded-full p-2">
+                ☰
+            </button>
+        </div>
+
+        <button class="flex items-center gap-3 bg-[#e3e8f0] hover:bg-gray-200
+                       rounded-full px-5 py-3 text-sm font-medium mb-8">
+            <span>＋</span>
+            New chat
+        </button>
+
+        <h3 class="text-sm font-semibold mb-4">Recent</h3>
+
+        <div id="recent-message-list"
+             class="flex flex-col gap-2 text-sm">
+        </div>
+
+        <div class="mt-auto text-xs text-gray-500">
+            Gemini Clone
+        </div>
+
+    </aside>
+
+    <!-- Main Chat -->
+    <main class="flex-1 flex flex-col relative">
+
+        <!-- Top Navbar -->
+        <header class="h-16 flex items-center justify-between px-8">
+
+            <h2 class="text-xl font-medium text-gray-600">
+                Gemini
+            </h2>
+
+            <button class="bg-white border rounded-full px-4 py-2
+                           text-sm hover:bg-gray-100">
+                Upgrade
+            </button>
+
+        </header>
+
+        <!-- Welcome Section -->
+        <section id="welcome"
+                 class="flex-1 flex flex-col items-center justify-center">
+
+            <h1 class="text-5xl font-medium mb-4
+                       bg-gradient-to-r from-blue-500 to-purple-500
+                       bg-clip-text text-transparent">
+                Hello, I'm Gemini
+            </h1>
+
+            <p class="text-2xl text-gray-400">
+                How can I help you today?
+            </p>
+
+        </section>
+
+        <!-- Chat Messages -->
+        <section id="chat-container"
+                 class="w-full max-w-4xl mx-auto flex-1 overflow-y-auto px-6">
+        </section>
+
+        <!-- Bottom Input -->
+        <div class="w-full max-w-4xl mx-auto px-6 pb-6">
+
+            <form hx-post="/api/chat"
+                  hx-target="#chat-container"
+                  hx-swap="beforeend"
+                  hx-on::after-request="if(event.detail.successful){document.getElementById('welcome').style.display='none';this.reset();}"
+                  class="bg-[#e9eef6] rounded-[32px] p-5">
+
+                <textarea
+                    name="message"
+                    placeholder="Ask Gemini"
+                    required
+                    rows="1"
+                    class="w-full bg-transparent resize-none outline-none
+                           text-gray-800 placeholder-gray-500 text-base"
+                ></textarea>
+
+                <div class="flex justify-between items-center mt-4">
+
+                    <button type="button"
+                            class="text-gray-600 hover:bg-gray-200
+                                   rounded-full p-2">
+                        ＋
+                    </button>
+
+                    <button type="submit"
+                            class="bg-blue-600 hover:bg-blue-700
+                                   text-white rounded-full px-6 py-3
+                                   font-medium">
+                        Send ↑
+                    </button>
+
+                </div>
+
+            </form>
+
+            <p class="text-center text-xs text-gray-400 mt-3">
+                Gemini may display inaccurate information.
+            </p>
+
+        </div>
+
+    </main>
+
+</div>
+
+<script>
+    document.body.addEventListener("htmx:afterSwap", function (event) {
+
+        const container = event.detail.target;
+
+        const markdownElements =
+            container.querySelectorAll(".markdown-content");
+
+        markdownElements.forEach(function (element) {
+
+            const markdown = element.dataset.markdown || "";
+
+            const html = marked.parse(markdown);
+
+            element.innerHTML = DOMPurify.sanitize(html);
+
+        });
+
+    });
+</script>
+
+</body>
+</html>
